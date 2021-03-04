@@ -45,8 +45,24 @@ Outline:
 
 import numpy as np
 import random as rand
+import turtle
+from PIL import Image
 
 class MarkovTextArt:
+
+    # Mapping of alphabetic characters to RGB values of colors. RGB values are retty uniformly distributed 
+    # across the color spectrum
+    CHARS_TO_COLORS = {
+    "a":(128,0,0), "A":(178,34,34), "b":(255,0,0), "B":(205,92,92), 
+    "c":(233,150,122), "C":(255,69,0), "d":(255,165,0), "D":(218,165,32), "e":(189,183,107), "E":(255,255,0), 
+    "f":(85,107,47), "F":(127,255,0),"g":(0,100,0), "G":(0,255,0), "h":(144,238,144), "H":(0,250,154), 
+    "i":(46,139,87), "I":(32,178,170), "j":(0,128,128), "J":(0,255,255), "k":(0,206,209), "K":(175,238,238), 
+    "l":(176,224,230), "L":(100,149,237), "m":(30,144,255), "M":(135,206,250), "n":(0,0,128), "N":(0,0,255), 
+    "o":(138,43,226), "O":(106,90,205), "p":(147,112,219), "P":(153,50,204), "q":(128,0,128), "Q":(238,130,238), 
+    "r":(218,112,214), "R":(255,20,147), "s":(255,182,193), "S":(139,69,19), "t":(255,235,205),"T":(222,184,135), 
+    "u":(250,250,210),"U":(255,228,225), "v":(244,164,96), "V":(255,245,238), "w":(255,222,173), "W":(230,230,250), 
+    "x":(253,245,230), "X":(255,255,240),"y":(119,136,153), "Y":(105,105,105), "z":(248,248,255), "Z":(220,220,220)
+    }
 
     def __init__(self, frequency_table={}, transition_matrix={}):
         """
@@ -193,10 +209,101 @@ class MarkovTextArt:
         return markov_text
 
             
-    def generate_markov_art(self, markov_text):
+    def draw_one_char(self, turtle_dude, screen_size, start_coords, current_char):
         """
-        Reads through each character of markov_text and generates art based off of 
-        """       
+        Uses the turtle object to create a visual for just one character
+        """
+
+        # current (x,y) position of turtle dude before any drawing 
+        t_pos = turtle_dude.pos()
+        pen_size = turtle_dude.pensize()
+        initial_pen_state = turtle_dude.pen()
+        #turtle_dude.setheading(0)
+        
+        if current_char.isalpha():
+            color_RGB = self.CHARS_TO_COLORS.get(current_char)
+            turtle_dude.pendown()
+            turtle_dude.color(color_RGB)
+            turtle_dude.circle(20)
+        elif current_char == " ":
+            turtle_dude.penup()
+        elif current_char == ".":
+            turtle_dude.dot()
+            turtle_dude.end_fill()
+        elif current_char == ",":
+            turtle_dude.begin_fill()
+        elif current_char == ("\'" or "\""):
+            turtle_dude.shape("arrow")
+            turtle_dude.setheading(0) # might comment this line out
+            turtle_dude.stamp()
+        elif current_char == "?":
+            turtle_dude.shape("classic")
+            turtle_dude.stamp()
+        elif current_char == "!":
+            turtle_dude.shape("triangle")
+            turtle_dude.stamp()
+        elif current_char == (":" or ";"):
+            turtle_dude.shape("square")
+            turtle_dude.stamp()
+            pen_speed = turtle_dude.pen().get("speed")
+            turtle_dude.pen(pensize=pen_size+1, speed=pen_speed+1)
+        elif current_char == "-":
+            turtle_dude.pen(tilt=30.0, pensize=pen_size+1, speed=4)
+        elif current_char == "\n":
+            # will need to fiddle around with this value so that turtle doesn't go off the screen
+            turtle_dude.setpos(start_coords[0], t_pos[1] + 10)
+            turtle_dude.pen(initial_pen_state)
+            turtle_dude.shape("turtle")
+        elif current_char.isdigit():
+            num = int(current_char)
+            turtle_dude.speed(num)
+            turtle_dude.pen(stretchfactor=(num, num/2))
+
+        
+        turtle_dude.setheading(0)
+        current_pos = turtle_dude.pos()
+        # NEED TO FIX LOGIC OF COORDINATES HERE, WAS ASSUMING WRONG KIND OF COORDINATE SYSTEM
+        if (-screen_size[1]/2 - current_pos[1]) < 10: #?? Unsure of this
+            turtle_dude.setpos(start_coords)
+        elif (screen_size[0]/2 - current_pos[0]) < 10:
+            turtle_dude.setpos(start_coords[0], current_pos[1] - 10)
+        else:
+            turtle_dude.forward(10)
+        
+
+
+
+
+    def generate_markov_art(self, markov_text, screen_width, screen_height, background_color, output_name):
+        """
+        Reads through each character of markov_text and generates art based off of each character. 
+        Art is generated using the Turtle module.
+            Args:
+                markov_text (str) - A string containing the text produced by the markov chain
+        """
+        
+        andrey = turtle.Turtle()
+        t_screen = andrey.getscreen()
+        t_screen.screensize(screen_width, screen_height)
+        t_screen.bgcolor(background_color)
+        t_screen.colormode(255)
+        # want turtle to start drawing at the top left of the screen, similar to how 
+        # English is written from left to right
+        start_coords = (-screen_width/2, screen_height/2) # NEED TO FIX THIS, what are x,y coordinates based
+        # off of the screen size? Are those things even related?
+        andrey.setpos(start_coords)
+        andrey.speed(9)
+
+        for char in markov_text:
+            self.draw_one_char(andrey, (screen_width, screen_height), start_coords, char)
+
+        t_canvas = andrey.getscreen().getCanvas()
+        t_canvas.postscript(file=output_name+".eps", width=screen_width, height=screen_height)
+        img_output = Image.open(output_name + ".eps")
+        img_output.save(output_name + ".png")
+
+
+
 
         
 
@@ -211,7 +318,14 @@ def main():
     print()
     #print(testing.get_next_char('a'))
 
-    print(testing.generate_markov_text(2000, "t"))
+    new_text = testing.generate_markov_text(2000, "t")
+    print(new_text)
+    print()
+    screen_w = 2000
+    screen_h = 1600
+    background = 'black'
+    testing.generate_markov_art(new_text, screen_w, screen_h, background, "first_output")
+
 
      
 if __name__ == "__main__":

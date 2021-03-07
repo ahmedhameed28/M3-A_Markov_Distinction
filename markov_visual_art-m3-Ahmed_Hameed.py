@@ -218,11 +218,11 @@ class MarkovTextArt:
         t_pos = turtle_dude.pos()
         pen_size = turtle_dude.pensize()
         initial_pen_state = turtle_dude.pen()
-        #turtle_dude.setheading(0)
+        turtle_dude.setheading(0)
+        turtle_dude.pendown()
         
         if current_char.isalpha():
             color_RGB = self.CHARS_TO_COLORS.get(current_char)
-            turtle_dude.pendown()
             turtle_dude.color(color_RGB)
             turtle_dude.circle(20)
         elif current_char == " ":
@@ -251,30 +251,42 @@ class MarkovTextArt:
             turtle_dude.pen(tilt=30.0, pensize=pen_size+1, speed=4)
         elif current_char == "\n":
             # will need to fiddle around with this value so that turtle doesn't go off the screen
-            turtle_dude.setpos(start_coords[0], t_pos[1] + 10)
+            turtle_dude.setpos(start_coords[0], t_pos[1] - 10)
             turtle_dude.pen(initial_pen_state)
             turtle_dude.shape("turtle")
         elif current_char.isdigit():
             num = int(current_char)
-            turtle_dude.speed(num)
             turtle_dude.pen(stretchfactor=(num, num/2))
 
         
         turtle_dude.setheading(0)
         current_pos = turtle_dude.pos()
         # NEED TO FIX LOGIC OF COORDINATES HERE, WAS ASSUMING WRONG KIND OF COORDINATE SYSTEM
-        if (-screen_size[1]/2 - current_pos[1]) < 10: #?? Unsure of this
+        x_axis = screen_size[0]/2
+        y_axis = screen_size[1]/2
+
+        # if the turtle is at the bottom of the screen, reset position to top-left
+        if (current_pos[1] + 10) < (-y_axis):
+            print("Got to y-axis conditional!")
+            print("current position", current_pos)
+
             turtle_dude.setpos(start_coords)
-        elif (screen_size[0]/2 - current_pos[0]) < 10:
-            turtle_dude.setpos(start_coords[0], current_pos[1] - 10)
-        else:
-            turtle_dude.forward(10)
+
+        # if turtle is at the far right of the screen, move turtle down and to the left
+        elif (current_pos[0] + 10) > x_axis:
+            print("Got to x-axis conditional!")
+            print("current position", current_pos)
+            turtle_dude.setpos(-x_axis, current_pos[1] - 10)
+            
+        turtle_dude.forward(10)
         
 
+    # self defined function to print coordinate 
+    def buttonclick(something, x,y):  
+        print("You clicked at this coordinate({0},{1})".format(x,y)) 
 
 
-
-    def generate_markov_art(self, markov_text, screen_width, screen_height, background_color, output_name):
+    def generate_markov_art(self, turtle_dude, markov_text, screen_width, screen_height, background_color, output_name):
         """
         Reads through each character of markov_text and generates art based off of each character. 
         Art is generated using the Turtle module.
@@ -282,25 +294,46 @@ class MarkovTextArt:
                 markov_text (str) - A string containing the text produced by the markov chain
         """
         
-        andrey = turtle.Turtle()
-        t_screen = andrey.getscreen()
-        t_screen.screensize(screen_width, screen_height)
+
+        t_screen = turtle_dude.getscreen()
+        #t_screen.screensize(screen_width, screen_height)
         t_screen.bgcolor(background_color)
         t_screen.colormode(255)
+
+        t_screen.tracer(0)
         # want turtle to start drawing at the top left of the screen, similar to how 
         # English is written from left to right
         start_coords = (-screen_width/2, screen_height/2) # NEED TO FIX THIS, what are x,y coordinates based
         # off of the screen size? Are those things even related?
-        andrey.setpos(start_coords)
-        andrey.speed(9)
+        #turtle_dude.penup()
+        print(start_coords)
+        turtle_dude.setpos(start_coords)
+        #andrey.home()
+        turtle_dude.speed(0)
+        window_info = (screen_width, screen_height)
 
         for char in markov_text:
-            self.draw_one_char(andrey, (screen_width, screen_height), start_coords, char)
+            self.draw_one_char(turtle_dude, window_info, start_coords, char)
 
-        t_canvas = andrey.getscreen().getCanvas()
-        t_canvas.postscript(file=output_name+".eps", width=screen_width, height=screen_height)
-        img_output = Image.open(output_name + ".eps")
-        img_output.save(output_name + ".png")
+        t_screen.update()
+
+        # keep the screen open 
+        t_screen.mainloop()
+
+        #turtle_dude.done()
+        #t_canvas = t_screen.getcanvas()
+        #t_canvas.postscript(file=output_name+'.eps', width=1000, height=1000)
+        #img_output = Image.open(output_name + '.eps')
+        #img_output.save(output_name + '.jpg')
+
+'''
+        #onscreen function to send coordinate 
+        turtle.home()
+        turtle.onscreenclick(self.buttonclick,1)  
+        t_screen.listen()  # listen to incoming connections 
+        turtle.speed(10) # set the speed 
+        turtle.done()    # hold the screen 
+'''
 
 
 
@@ -309,9 +342,9 @@ class MarkovTextArt:
 
 def main():
     testing = MarkovTextArt()
-    testing.read_from_file("/Users/Ahmed/Desktop/Junior Year/Spring 2021 Semester/Computational Creativity/CC Programming/M3-A_Markov_Distinction/arctic_monkeys_AM_album_song_lyrics.txt")
-    
-    print(testing.frequency_table)
+    #testing.read_from_file("/Users/Ahmed/Desktop/Junior Year/Spring 2021 Semester/Computational Creativity/CC Programming/M3-A_Markov_Distinction/arctic_monkeys_AM_album_song_lyrics.txt")
+    testing.read_from_file("arctic_monkeys_AM_album_song_lyrics.txt")
+    #print(testing.frequency_table)
     print()
     #testing.populate_transition_matrix()
     #print(testing.transition_matrix)
@@ -321,10 +354,11 @@ def main():
     new_text = testing.generate_markov_text(2000, "t")
     print(new_text)
     print()
-    screen_w = 2000
-    screen_h = 1600
+    screen_w = 1260
+    screen_h = 660
     background = 'black'
-    testing.generate_markov_art(new_text, screen_w, screen_h, background, "first_output")
+    andrey = turtle.Turtle()
+    testing.generate_markov_art(andrey, new_text, screen_w, screen_h, background, "/Users/Ahmed/Desktop/Junior Year/Spring 2021 Semester/Computational Creativity/CC Programming/M3-A_Markov_Distinction/first_output")
 
 
      

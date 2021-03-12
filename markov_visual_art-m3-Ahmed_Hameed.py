@@ -1,6 +1,6 @@
 """
-A program that reads in text, computes transition probabilities based on the text, creates new text based
-off those probabilites, then creates art based off the text
+A program that reads in text, computes transition probabilities based off the input text, creates new text based
+off those probabilites using a Markov chain, then creates visual art based off the newly produced text.
 
 Outline:
     * Read in text and process the text:
@@ -51,10 +51,17 @@ from PIL import Image
 WINDOW_WIDTH = 1260 # the approximate width of the coordinate plane when using turtle
 WINDOW_HEIGHT = 660 # the approximate height of the coordiante plane when using turtle
 
-class MarkovTextArt:
+X_AXIS = WINDOW_WIDTH/2 # approximate length of x-axis based on the width of the drawing window
+Y_AXIS = WINDOW_HEIGHT/2 # approximate length of y-axis based on the height of the drawing window
 
-    # Mapping of alphabetic characters to RGB values of colors. RGB values are pretty uniformly distributed 
-    # across the color spectrum
+class MarkovTextArt:
+    """
+
+    """
+    # Mapping of alphabetic characters to RGB values of colors. RGB values are uniformly distributed 
+    # across the color spectrum using RGB color table from: 
+    # https://www.rapidtables.com/web/color/RGB_Color.html#:~:text=RGB%20color%20space%20or%20RGB,*256%3D16777216%20possible%20colors.
+
     CHARS_TO_COLORS = {
     "a":(128,0,0), "A":(178,34,34), "b":(255,0,0), "B":(205,92,92), 
     "c":(233,150,122), "C":(255,69,0), "d":(255,165,0), "D":(218,165,32), "e":(189,183,107), "E":(255,255,0), 
@@ -69,17 +76,17 @@ class MarkovTextArt:
 
     def __init__(self, frequency_table={}, transition_matrix={}):
         """
-        Constructs a new MarkovTextArt class with a transition 
+        Constructs a new MarkovTextArt object with a frequency table and transition_matrix.
+            Args:
+                frequency_table (dict) - A dictionary that tracks that tracks 1 previous character occurences 
+                based off of the current character. A key is the current character and a value is a
+                dictionary of previous characters and their number occurrences
+                transition_matrix (dict) - A transition probabilites matrix based off of character 
+                occurrences in frequency table
         """
-        # a frequency table that tracks 1 previous character occurences based off of current character
-        # dictionary where a key is the current character and a value is a dictionary of previous characters
-        # and their number occurrences
-        self.frequency_table = frequency_table
-        
-        #self.all_chars = list(self.frequency_table.keys())
 
-        # transition probabilites matrix based off of character occurrences in frequency table 
-        # MIGHT JUST POPULATE USING A FUNCTION THAT RETURNS A TRANSITION MATRIX??
+        self.frequency_table = frequency_table
+        # NOTE: transition matrix is NOT currently being used by program but could be useful later on.
         self.transition_matrix = transition_matrix
     
 
@@ -87,6 +94,8 @@ class MarkovTextArt:
         """
         Function that takes a string, words, and reads through each character while updating the
         frequency table.
+            Args: words (str) - A string containing the text that will be processed.
+            Return: None
         """
         
         # for every character in words that has a previous character (so starting at index 1)
@@ -104,26 +113,25 @@ class MarkovTextArt:
                 # otherwise, create a new entry for the previous character
                 else:
                     self.frequency_table[current_char][prev_char] = 1
-                    #self.frequency_table[current_char].update({prev_char: 1})
             
             # otherwise, create a new entry in the dictionary for the character
             else:
                 self.frequency_table[current_char] = {prev_char: 1}
 
+        return words[-1]
 
     def read_from_file(self, filename):
         """
         Given a filename, reads the contents of that file and populates the frequency table, line by line.
             Args: filename (str) - The name of the .txt file to be processed. 
+            Return: None
         """
         text_file = open(filename, 'r')
 
         # read entire file as a string and send to read_string()
         text_str = text_file.read()
         self.read_string(text_str)
-        print("File size ", len(text_str), "characters")
-        #for line in text_file:
-        #    self.read_string(line)
+        
         text_file.close()
 
 
@@ -150,15 +158,15 @@ class MarkovTextArt:
         into probabilities: frequency/sum of previous character occurrences = probability. 
             Args: None.
             Return: None.
+        NOTE: This function isn't actually used by the program unfortunately. I wrote it but
+            ended up not needing it since random.choices() takes in a 'weights' argument.
         """
     
         # iterate over every character key in frequency table
         for key in self.frequency_table.keys():
 
             prev_char_dict = self.frequency_table.get(key)
-            #print("Prev Char Dict:", prev_char_dict)
             total_sum = self.sum_char_occurences(prev_char_dict)
-            #print("Total sum:", total_sum)
             self.transition_matrix[key] = {}
 
             # iterate over every previous character occurrence for current character key
@@ -176,7 +184,6 @@ class MarkovTextArt:
             Return: next_char (str) - The next character, generated from the transition probabilities 
                                         created by random.choices() 
         """
-        #print(current_char)
         prev_chars_dict = self.frequency_table.get(current_char)
         all_chars = list(prev_chars_dict.keys())
         char_counts = list(prev_chars_dict.values())
@@ -188,15 +195,14 @@ class MarkovTextArt:
     def generate_markov_text(self, num_chars, start_string):
         """
         Uses a 1-order Markov chain (a matrix of characters and transition probabilites) to generate new
-        text based off the previous character occurrences. A 1-order Markov chain only looks the previous 
+        text based off the previous character occurrences. A 1-order Markov chain only looks at the previous 
         state. Creates new text of size num_chars, and the new text continues after the last character 
         in start_string
         Example: "This is a test string!!!!!!!!" --> At character '!': There's a 87.5% chance of the next
                 character being another '!' and a 12.5% of it being 'g'.
             Args:
                 num_chars (int) - The number of characters to be generated by the function
-                start_string (str) - The start of the new text, last character will be used to generate
-                                        the new text. 
+                start_string (str) - The start of the new text, last character will be used to generate the new text. 
             Return:
                 markov_text (str) - The new text generated by the 1-order Markov Chain and transition matrix
         """
@@ -212,79 +218,101 @@ class MarkovTextArt:
         return markov_text
 
             
-    def draw_one_char(self, turtle_dude, initial_pen_state, start_coords, current_char, step_size, font_size):
+    def draw_one_char(self, current_char, turtle_dude, initial_pen_state, start_coords, step_size, font_size):
         """
-        Uses the turtle object to create a visual for just one character
+        Helper function for generate_markov_art() that uses the turtle object to create visual output for 
+        just one character.
+            Args:
+                current_char (str) - The current character that is being drawn
+                turtle_dude (Turtle object) - The Turtle object that is drawing everything
+                initial_pen_state (dict) - A dictionary containing the initial attributes of the Turtle pen
+                                            before any drawing is done
+                start_coords (tuple) - A tuple containing the starting coordinates (x,y) of the Turtle object
+                step_size (int) - How much the x and y coordinates of the Turtle object change after every
+                                    drawing.
+                font_size (int) - Determines the size of the circles being drawn for letters
+            Return: None
         """
 
         # current (x,y) position of turtle dude before any drawing 
         t_pos = turtle_dude.pos()
         pen_size = turtle_dude.pensize()
-        color_RGB = self.CHARS_TO_COLORS.get(current_char)
-        #initial_pen_state = turtle_dude.pen()
+        turtle_size = turtle_dude.shapesize()
         turtle_dude.setheading(0)
         turtle_dude.pendown()
         
+        # if the character is a letter then draw a circle with a color unique to that letter
         if current_char.isalpha():
+            color_RGB = self.CHARS_TO_COLORS.get(current_char)
             turtle_dude.color(color_RGB)
-            #size = len(self.frequency_table.get(current_char).keys())
-            turtle_dude.circle(font_size, color_RGB)
+            turtle_dude.circle(font_size)
+        # simulates the use of a space in writing, nothing is drawn and turtle simply 
+        # moves step_size distance to the right
         elif current_char == " ":
             turtle_dude.penup()
+        # a period marks the end of the current sentences and the start of a new sentence so a dot is drawn
+        # and the drawing pen is reset to its initial values
         elif current_char == ".":
             turtle_dude.dot(font_size)
-            turtle_dude.end_fill()
             turtle_dude.pen(initial_pen_state)
+        # a comma here marks a pause in the sentence and connection between the previous words in the sentence
+        # so we move the turtle forward without lifting the pen
         elif current_char == ",":
-            turtle_dude.begin_fill()
+            turtle_dude.forward(step_size)
+        # attempting to simulate an italics effect after the quotation marks, will likely need to separate
+        # apostrophe from a quotation mark in the future
         elif current_char == ("\'" or "\""):
-            #turtle_dude.shape("arrow")
-            #turtle_dude.setheading(0) # might comment this line out
-            #turtle_dude.stamp()
-            turtle_dude.pen(tilt=45, stretchfactor=(10,20))
+            turtle_dude.pen(tilt=15, stretchfactor=(0.8,0.1))
+        # question mark is signified by a triangle and since question marks also serve to end a sentence
+        # the drawing pen is reset to its initial values
         elif current_char == "?":
-            turtle_dude.shape("classic")
-            turtle_dude.stamp()
-        elif current_char == "!":
+            turtle_dude.turtlesize(0.5,0.5,0.5)
+            turtle_dude.setheading(90)
             turtle_dude.shape("triangle")
             turtle_dude.stamp()
+            turtle_dude.turtlesize(*turtle_size)
+            turtle_dude.pen(initial_pen_state)            
+        # exclamation point is signified by an arrow pointing down and since question marks also serve to
+        # end a sentence, the drawing pen pen is reset to its initial values
+        elif current_char == "!":
+            turtle_dude.turtlesize(0.5,0.5,0.5)
+            turtle_dude.setheading(270)
+            turtle_dude.shape("arrow")
+            turtle_dude.stamp()
+            turtle_dude.setpos(t_pos)
+            turtle_dude.turtlesize(*turtle_size)
+            turtle_dude.pen(initial_pen_state)
+        # colon or semicolons are often used to emphasize a clause in a sentence or connect a related clause
+        # to the previous clause in a sentence so a 'bold' effect is applied to the drawings
         elif current_char == (":" or ";"):
-            #turtle_dude.shape("square")
-            #turtle_dude.stamp()
-            #pen_speed = turtle_dude.pen().get("speed")
-            turtle_dude.pen(pensize=pen_size+3)
+            turtle_dude.pen(pensize=pen_size+5)
+        # dashes are also used to connect words, clauses, and for emphasis so a small 'bold' 
+        # effect is applied here as well
         elif current_char == "-":
-            turtle_dude.pen(tilt=30.0, pensize=pen_size+1)
+            turtle_dude.pen(tilt=30.0, pensize=pen_size+2)
+        # it's a new line so the turtle is moved down and the pen is reset
         elif current_char == "\n":
-            # will need to fiddle around with this value so that turtle doesn't go off the screen
             turtle_dude.penup()
             turtle_dude.setpos(start_coords[0], t_pos[1] - step_size)
             turtle_dude.pen(initial_pen_state)
-            turtle_dude.shape("turtle")
+        # a bit random but a number produces a stretching effect in the drawing based on what the digit is
         elif current_char.isdigit():
             num = int(current_char)
-            turtle_dude.pen(stretchfactor=(num, num/2))
+            turtle_dude.pen(stretchfactor=(3*num, num))
 
+        # turtle has finished producing a visual for the current character so the pen is lifted
         turtle_dude.penup()
 
-        turtle_dude.setheading(0)
+        turtle_dude.setheading(0) # resetting the turtle so that it faces East
         current_pos = turtle_dude.pos()
-        # NEED TO FIX LOGIC OF COORDINATES HERE, WAS ASSUMING WRONG KIND OF COORDINATE SYSTEM
-        x_axis = WINDOW_WIDTH/2
-        y_axis = WINDOW_HEIGHT/2
 
         # if the turtle is at the bottom of the screen, reset position to top-left
-        if (current_pos[1] + step_size) < (-y_axis):
-            #print("Got to y-axis conditional!")
-            #print("current position", current_pos)
-
+        if (current_pos[1] + step_size) < (-Y_AXIS):
             turtle_dude.setpos(start_coords)
 
         # if turtle is at the far right of the screen, move turtle down and to the left
-        elif (current_pos[0] + step_size) > x_axis:
-            #print("Got to x-axis conditional!")
-            #print("current position", current_pos)
-            turtle_dude.setpos(-x_axis, current_pos[1] - step_size)
+        elif (current_pos[0] + step_size) > X_AXIS:
+            turtle_dude.setpos(-X_AXIS, current_pos[1] - step_size)
             
         turtle_dude.forward(step_size+5)
         
@@ -294,43 +322,49 @@ class MarkovTextArt:
         print("You clicked at this coordinate({0},{1})".format(x,y)) 
 
 
-    def generate_markov_art(self, turtle_dude, markov_text, background_color, output_name, step_size=10, font_size=13):
+    def generate_markov_art(self, turtle_dude, markov_text, output_name, background_color="black", step_size=10, font_size=13):
         """
-        Reads through each character of markov_text and generates art based off of each character. 
+        Reads through each character of markov_text and generates art based off of each character.
+        Each letter in the text is represented by a circle with a unique color.
         Art is generated using the Turtle module.
             Args:
+                turtle_dude (Turtle object) - The Turtle object that will be used to draw the image
                 markov_text (str) - A string containing the text produced by the markov chain
+                background_color (str) - A string indicating the background color of the turtle drawing 
+                                        such as 'white' or 'black'. Default = 'black' since that looks better
+                                        considering the range of colors. 
+                output_name (str) - The name of the output file that the drawing will be saved to
+                step_size (int) - The amount of space between each line of drawings: affects how much the
+                                 x and y coordinates of the turtle change after every character. Default = 10
+                font_size (int) - The size of the circles that are drawn. Default = 13
+            Return: None
         """
-        
 
         t_screen = turtle_dude.getscreen()
         #t_screen.screensize(screen_width, screen_height)
         t_screen.bgcolor(background_color)
-        t_screen.colormode(255)
+        t_screen.colormode(255) # allows turtle to accept RGB color values from 0-255
+        t_screen.tracer(0) # turns off screen updates so that the drawing occurs more quickly
 
-        t_screen.tracer(0)
         # want turtle to start drawing at the top left of the screen, similar to how 
-        # English is written from left to right
-        start_coords = (-WINDOW_WIDTH/2, WINDOW_HEIGHT/2) # NEED TO FIX THIS, what are x,y coordinates based
-        # off of the screen size? Are those things even related?
-        #turtle_dude.penup()
-        print(start_coords)
+        # English is written top, down, from left to right
+        start_coords = (-X_AXIS, Y_AXIS) 
+
+        #print(start_coords)
+        turtle_dude.penup()
         turtle_dude.setpos(start_coords)
-        #andrey.home()
         turtle_dude.speed(0)
+        turtle_dude.hideturtle()
         initial_pen_state = turtle_dude.pen()
-        #window_info = (screen_width, screen_height)
 
         for char in markov_text:
-            self.draw_one_char(turtle_dude, initial_pen_state, start_coords, char, step_size, font_size)
-
-
-        t_screen.update()
+            self.draw_one_char(char, turtle_dude, initial_pen_state, start_coords, step_size, font_size)
+        
+        t_screen.update() # updates the screen after the turtle is done drawing
 
         # keep the screen open 
         t_screen.mainloop()
 
-        #turtle_dude.done()
         #t_canvas = t_screen.getcanvas()
         #t_canvas.postscript(file=output_name+'.eps', width=1000, height=1000)
         #img_output = Image.open(output_name + '.eps')
@@ -343,35 +377,28 @@ class MarkovTextArt:
         t_screen.listen()  # listen to incoming connections 
         turtle.speed(10) # set the speed 
         turtle.done()    # hold the screen 
-'''
-
-
-
-
-        
+'''   
 
 def main():
+    """
+    main() function used to create a MarkovTextArt object, read and process the text from an input .txt file
+    to create first order Markov chain, and lastly, generate visuals based on the text produced by the Markov chain.
+    """
     testing = MarkovTextArt()
-    #testing.read_from_file("/Users/Ahmed/Desktop/Junior Year/Spring 2021 Semester/Computational Creativity/CC Programming/M3-A_Markov_Distinction/arctic_monkeys_AM_album_song_lyrics.txt")
     testing.read_from_file("arctic_monkeys_AM_album_song_lyrics.txt")
-    #print(testing.frequency_table)
-    print()
-    #testing.populate_transition_matrix()
-    #print(testing.transition_matrix)
-    print()
-    #print(testing.get_next_char('a'))
 
-    new_text = testing.generate_markov_text(2000, "t")
+    print()
+    num_chars = 2000
+    start_string = "t"
+    new_text = testing.generate_markov_text(num_chars, start_string)
     print(new_text)
     print()
 
-    background = 'black'
     andrey = turtle.Turtle()
     step_size = 10
-    font_size = 10
-    file_dir = "/Users/Ahmed/Desktop/Junior Year/Spring 2021 Semester/Computational Creativity/CC Programming/M3-A_Markov_Distinction/first_output"
-    testing.generate_markov_art(andrey, new_text, background, file_dir, step_size, font_size)
-
+    font_size = 22
+    output_filename = "/Users/Ahmed/Desktop/Junior Year/Spring 2021 Semester/Computational Creativity/CC Programming/M3-A_Markov_Distinction/first_output"
+    testing.generate_markov_art(andrey, new_text, output_filename, step_size=step_size, font_size=font_size)
 
      
 if __name__ == "__main__":

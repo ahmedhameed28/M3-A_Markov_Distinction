@@ -1,7 +1,8 @@
 """
 Markov Text Visual Art Generator
 Author: Ahmed Hameed
-Version Date: 4/4/2021
+Version Date: 5/15/2021
+
 Course: Computational Creativity (CSCI 3725)
 Instructor: Sarah Harmon
 Assignment: Mission 3 - A Markov Distinction
@@ -12,46 +13,6 @@ then finally, generate unique visual output for each character in the newly prod
 common characters to visual elements.
 
 Dependencies: os, unidecode, random, turtle
-
-Outline:
-    * Read in text and process the text:
-        * Function that reads in a text file, line by line and parsing the text and updating the
-            frequency table as it encounters characters (could implement this function so that it reads
-            the text backwards from end to beginning since Markov chains rely on what occurred BEFORE hand)
-        * Function that takes in a string and updates frequency table (to be used in conjugtion with above)
-        
-        * Function that takes in user input from the terminal and fills up the frequency table??
-            **** Functionality that allows users to directly interact with creative system via terminal
-              rather than text files ****
-        
-    
-    * Populate transition probabilities matrix based on the frequency table
-        * Function that sums up all the previous character occurrences for a given character and turns them
-            into probabilities: frequency/total_sum = probability. Transition matrix will also be a dict
-    
-    * Create new text using transition probabilites matrix
-        * Function that generates 1 new character based off of transition matrix
-        * Function that takes in a int for the length of the new text and generates new text of that length
-            based on the transition matrix (works in conjuction with function above)
-    
-    THIS PART WILL LIKELY BE THE MOST DIFFICULT!
-    * Read through new text and create unique visual output for each character 
-        * Requirements: Visual output must somehow be unique to the text that it is produced from.
-                        Example: visual output generated from Arctic Monkeys EP must be different from
-                                visual output generated from a Shakespeare play or an instruction manual
-        * Need a mapping of ASCII characters to visual elements, from text to art
-            Possible Ideas: 
-                - Map ASCII characters and their positions to RGB values on the color spectrum
-                    (uniform distribution?) 
-                - Every space changes color or changes the line or shape being drawn or Turtle position
-                - Every period changes color or shape or line or drawing angle or Turtle position
-                - Every comma, apostrophe, underscore, etc. does something
-                - Assign unique features to punctuation.
-                --> Punctuation is what makes the text unique? Spacing? What is it that makes language "unique"?
-        * Function that encodes all of the visual rules discussed above and reads through the text and
-            creates the art using Turtle! Save the art onto a .png file. Profit!
-
-    * Try different types of text input and see what gets produced by the system.
 """
 
 import os
@@ -71,7 +32,7 @@ class MarkovTextArt:
 
     # Mapping of alphabet characters to RGB values of colors. RGB values are uniformly distributed
     # across the color spectrum using RGB color table from:
-    # https://www.rapidtables.com/web/color/RGB_Color.html#:~:text=RGB%20color%20space%20or%20RGB,*256%3D16777216%20possible%20colors.
+    # https://www.rapidtables.com/web/color/RGB_Color.html
     CHARS_TO_COLORS = {
         "a": (128, 0, 0), "A": (178, 34, 34), "b": (255, 0, 0), "B": (205, 92, 92),
         "c": (233, 150, 122), "C": (255, 69, 0), "d": (255, 165, 0), "D": (218, 165, 32), "e": (189, 183, 107), "E": (255, 255, 0),
@@ -98,12 +59,13 @@ class MarkovTextArt:
         self.frequency_table = frequency_table
         # NOTE: transition matrix is NOT currently being used by program but could be useful later on.
         self.transition_matrix = transition_matrix
+        self.input_text = ''
 
 
     def read_string(self, words):
         """
-        Function that takes a string, words, and reads through each character while updating the
-        frequency table.
+        Function that takes a string 'words' and reads through each character while updating the
+        frequency table (global variable).
             Args: words (str) - A string containing the text that will be processed.
             Return: None
         """
@@ -133,14 +95,15 @@ class MarkovTextArt:
 
     def read_from_file(self, filename):
         """
-        Given a filename, reads the contents of that file and populates the frequency table, line by line.
+        Given a filename, reads the entire contents of that file at once and then calls a 
+        a method that populates the frequency table.
             Args: filename (str) - The name of the .txt file to be processed. 
             Return: None
         """
         with open(filename, 'r', encoding='utf-8') as text_file:
-            # read entire file as a string and sends it to read_string()
-            text_str = text_file.read()
-            self.read_string(text_str)
+            # read entire file as a string and stores in the input_text class variable
+            self.input_text = text_file.read()
+            self.read_string(self.input_text)
 
 
     def sum_char_occurences(self, char_dict):
@@ -239,7 +202,7 @@ class MarkovTextArt:
             output.write(text)
 
 
-    def draw_one_char(self, current_char, turtle_dude, initial_pen_state, start_coords, step_size, font_size):
+    def draw_one_char(self, current_char, turtle_dude, initial_pen_state, start_coords, step_x, step_y, font_size):
         """
         Helper function for generate_markov_art() that uses the turtle object to create visual output for 
         just one character.
@@ -249,8 +212,8 @@ class MarkovTextArt:
                 initial_pen_state (dict) - A dictionary containing the initial attributes of the Turtle pen
                                             before any drawing is done
                 start_coords (tuple) - A tuple containing the starting coordinates (x,y) of the Turtle object
-                step_size (int) - How much the x and y coordinates of the Turtle object change after every
-                                    drawing.
+                step_x (int) - How much the x coordinate of the Turtle object changes after every character drawn
+                step_y (int) - How much the y coordinate of the Turtle object changes after every new line
                 font_size (int) - Determines the size of the circles being drawn for letters
             Return: None
         """
@@ -279,12 +242,12 @@ class MarkovTextArt:
         # a period marks the end of the current sentences and the start of a new sentence so a dot is drawn
         # and the drawing pen is reset to its initial values
         elif current_char == ".":
-            turtle_dude.dot(font_size)
+            turtle_dude.dot(font_size-3)
             turtle_dude.pen(initial_pen_state)
         # a comma here marks a pause in the sentence and connection between the previous words in the sentence
         # so we move the turtle forward without lifting the pen
         elif current_char == ",":
-            turtle_dude.forward(step_size)
+            turtle_dude.forward(step_x)
         # attempting to simulate an italics effect after the quotation marks, will likely need to separate
         # apostrophe from a quotation mark in the future
         elif current_char == ("\'" or "\""):
@@ -320,7 +283,7 @@ class MarkovTextArt:
         # it's a new line so the turtle is moved down and the pen is reset
         elif current_char == "\n":
             turtle_dude.penup()
-            turtle_dude.setpos(start_coords[0], t_pos[1] - (step_size+5) )
+            turtle_dude.setpos(start_coords[0], t_pos[1] - step_y)
             #turtle_dude.pen(initial_pen_state)
         # a bit random but a number produces a stretching effect in the drawing based on what the digit is
         elif current_char.isdigit():
@@ -332,7 +295,7 @@ class MarkovTextArt:
         turtle_dude.penup()
         turtle_dude.setheading(0) 
         # drawing of the current character is complete so turtle moves forward
-        turtle_dude.forward(step_size)
+        turtle_dude.forward(step_x)
 
         current_pos = turtle_dude.pos() 
         # if the turtle is at the bottom of the screen, reset position to top-left
@@ -340,10 +303,10 @@ class MarkovTextArt:
             turtle_dude.setpos(start_coords)
         # if turtle is at the far right of the screen, move turtle down and to the left
         elif current_pos[0] > X_AXIS:
-            turtle_dude.setpos(-X_AXIS, current_pos[1] - (step_size+5))
+            turtle_dude.setpos(-X_AXIS, current_pos[1] - step_y)
 
 
-    def generate_art(self, turtle_dude, markov_text, step_size=10, font_size=13):
+    def generate_art(self, turtle_dude, markov_text, step_x=10, step_y=15, font_size=13):
         """
         Reads through each character of markov_text and generates art based off of each character.
         Each letter in the text is represented by a circle with a unique color.
@@ -352,14 +315,13 @@ class MarkovTextArt:
                 turtle_dude (Turtle object) - The Turtle object that will be used to draw the image
                 markov_text (str) - A string containing the text produced by the markov chain
                 step_size (int) - The amount of space between each line of drawings: affects how much the
-                                 x and y coordinates of the turtle change after every character. Default = 15
+                                 x and y coordinates of the turtle change after every character. Default = 10
                 font_size (int) - The size of the circles that are drawn. Default = 13
             Return: None
         """
         # want turtle to start drawing at the top left of the screen, similar to how
         # English is written top, down, from left to right
         start_coords = (-X_AXIS, Y_AXIS)
-        # print(start_coords)
         turtle_dude.penup()
         turtle_dude.setpos(start_coords)
 
@@ -372,7 +334,7 @@ class MarkovTextArt:
         # create unique visual output for every character in markov_text
         for char in markov_text:
             self.draw_one_char(char, turtle_dude, initial_pen_state,
-                               start_coords, step_size, font_size)
+                               start_coords, step_x, step_y, font_size)
 
 
 
@@ -383,17 +345,19 @@ def main():
     """
 
     # set parameters of the visual art here!
-    step_size = 16 # distance between each circle drawn
-    font_size = 13 # the radius of the circles drawn
+    step_x = 16 # distance between each circle drawn
+    step_y = 28 # distance between each row of circles
+    font_size = 10 # the radius of the circles drawn
     pen_size = 1 # the thickness of the lines in the drawing
-    num_chars = 2000
-    background_color = 'black' # black looks best considering the range of colors
+    # number of characters that will be generated using 1-order Markov chain and then drawn using 
+    num_chars = 1200  
+    background_color = 'black' # color of drawing screen, black looks best considering the range of colors
 
     # SET INPUT FILENAME HERE! Format: text_input/[filename.txt]. 
     # NOTE: If using VS Code and you have the folder opened then find the desired input file in the "EXPLORER" window,
     # right click on it, and select "Copy Relative Path" then paste into input_file below.
     # Make sure to change all '\' to '/'
-    input_file = "text_input/arctic_monkeys_AM_album_song_lyrics.txt"
+    input_file = "text_input/random_text_ABC.txt"
     visual_name = input_file.strip('.txt').lstrip("text_input/") # getting rid of the '.txt' and 'text_input/'
     # filename of the generated 1-order Markov Chain text
     new_markov_text_output_file = "text_output/markov_" + visual_name + ".txt"
@@ -405,7 +369,7 @@ def main():
     t_screen.bgcolor(background_color)
     t_screen.colormode(255) # allows turtle to accept RGB color values from 0-255
     
-    # IF YOU WANT TO SEE THE TURTLE DRAW: increase the value of the argument in tracer()
+    # NOTE: IF YOU WANT TO SEE THE TURTLE DRAW: increase the value of the argument in tracer()
     t_screen.tracer(0) # 0 turns off screen updates so that the drawing occurs more quickly
 
     print ("\nCurrent visual:", visual_name)
@@ -417,7 +381,7 @@ def main():
     # saving Markov chain generated text to a .txt file in 'text_output'
     current_artist.export_text(new_text, new_markov_text_output_file)  
     # generating the actual drawing 
-    current_artist.generate_art(andrey, new_text, step_size, font_size)
+    current_artist.generate_art(andrey, new_text, step_x, step_y, font_size)
     
     t_screen.update()  # updates the screen after the turtle is done drawing
     t_screen.mainloop() # keeps the screen open
